@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from ledger_core import InvalidInput, canonical_json, decimal_text, name, parse_json, require_fields
+from ledger_core import InvalidInput, canonical_json, decimal_text, name, parse_json, require_fields, whole_number
 from publication.projection import DailyProjection, projection_data, projection_from_data
 
 
@@ -13,6 +13,15 @@ class FrozenSignoff:
     @property
     def states(self):
         return tuple('pending' if decision is None else 'reviewed' for decision in self.conclusions)
+
+
+@dataclass(frozen=True)
+class ColdArchive:
+    archive_id: str
+    signoff_id: str
+    medium_id: str
+    slot: int | None
+    sealed: bool
 
 
 def initialize_review_store(connection):
@@ -30,6 +39,15 @@ def initialize_review_store(connection):
         CREATE TABLE IF NOT EXISTS frozen_signoffs (
             signoff_id TEXT NOT NULL PRIMARY KEY,
             content TEXT NOT NULL
+        )
+    ''')
+    connection.execute('''
+        CREATE TABLE IF NOT EXISTS cold_archives (
+            archive_id TEXT NOT NULL PRIMARY KEY,
+            signoff_id TEXT NOT NULL,
+            medium_id TEXT NOT NULL,
+            slot INTEGER,
+            sealed INTEGER NOT NULL
         )
     ''')
 
@@ -80,3 +98,35 @@ def store_signoff(connection, signoff):
     })
     connection.execute('INSERT INTO frozen_signoffs (signoff_id, content) VALUES (?, ?)',
                        (signoff.signoff_id, content))
+
+
+def load_cold_archive(connection, archive_id):
+    record = connection.execute('''
+        SELECT signoff_id, medium_id, slot, sealed FROM cold_archives WHERE archive_id = ?
+    ''', (archive_id,)).fetchone()
+    if record is None:
+        return None
+    signoff_id, medium_id, slot, sealed = record
+    return ColdArchive(archive_id, signoff_id, medium_id, slot, bool(sealed))
+
+
+def store_cold_archive(connection, record):
+    connection.execute('''
+        INSERT INTO cold_archives (archive_id, signoff_id, medium_id, slot, sealed)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (record.archive_id, record.signoff_id, record.medium_id, record.slot,
+          int(record.sealed)))
+
+
+def command_cold_archive_slot(connection, archive_id, slot):
+    whole_number(slot, 'slot')
+    connection.execute('''
+        UPDATE cold_archives SET slot = ? WHERE archive_id = ? AND sealed = 0
+    ''', (slot, archive_id))
+
+
+def seal_cold_archive(connection, archive_id, slot):
+    whole_number(slot, 'slot')
+    connection.execute('''
+        UPDATE cold_archives SET sealed = 1 WHERE archive_id = ? AND slot = ?
+    ''', (archive_id, slot))

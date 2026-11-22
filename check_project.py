@@ -4,7 +4,10 @@ import unittest
 
 
 def main():
-    suite = unittest.defaultTestLoader.discover('tests', top_level_dir='.')
+    loader = unittest.defaultTestLoader
+    suite = unittest.TestSuite()
+    suite.addTests(loader.discover('tests', top_level_dir='.'))
+    suite.addTests(loader.loadTestsFromName('archive_medium.MediumTests'))
     if suite.countTestCases():
         result = unittest.TextTestRunner(verbosity=2).run(suite)
     else:
