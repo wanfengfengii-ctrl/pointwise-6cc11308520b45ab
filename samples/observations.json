@@ -1,0 +1,10 @@
+{
+  "day": "青溪/2026-11-17",
+  "batch_id": "QX-01-晨报",
+  "rows": [
+    {"row_id": "R", "liters": 7, "source": {"station": "QX-01", "document": "晨班现场记录", "line": 21}},
+    {"row_id": "S", "liters": 11, "source": {"station": "QX-01", "document": "晨班现场记录", "line": 22}},
+    {"row_id": "Z", "liters": 0, "source": {"station": "QX-01", "document": "晨班现场记录", "line": 23}},
+    {"row_id": "M", "liters": null, "source": {"station": "QX-01", "document": "晨班现场记录", "line": 24}}
+  ]
+}
